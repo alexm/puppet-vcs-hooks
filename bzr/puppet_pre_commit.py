@@ -12,6 +12,24 @@ import os
 import sys
 import subprocess
 
+def get_puppet_args():
+    """Find the right args for checking puppet syntax"""
+    try:
+        process = subprocess.Popen(["puppet","-V"],
+            stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+        process.wait()
+        if process.returncode != 0:
+            print "\n\n Error: puppet error: %s" % (process.stdout.readlines())
+        else:
+            version = process.stdout.readline().rstrip()
+            if version >= "2.7":
+                return ["parser","validate"]
+            else:
+                return ["--parseonly"]
+    except OSError, e:
+        print "\n\n Error: failed to execute 'puppet': %s" % (e)
+        sys.exit(1)
+
 def get_branch_root(directory):
     """Find the root directory of the current BZR branch."""
     while os.path.exists(directory):
@@ -37,7 +55,7 @@ def check_puppet_syntax(local, master, old_revno, old_revid, future_revno,
         if file.endswith(".pp"):
             print "Checking syntax in: %s" % (file)
             try:
-                process = subprocess.Popen(["puppet", "--parseonly", file],
+                process = subprocess.Popen(["puppet"] + get_puppet_args() + [file],
                     stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
                 process.wait()
                 if process.returncode != 0:
