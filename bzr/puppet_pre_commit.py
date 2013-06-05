@@ -53,7 +53,7 @@ def check_puppet_syntax(local, master, old_revno, old_revid, future_revno,
     for file in tree_delta.added + tree_delta.renamed + tree_delta.modified:
         file = file[0]
         if file.endswith(".pp"):
-            print "Checking syntax in: %s" % (file)
+            print "Checking Puppet syntax in: %s" % (file)
             try:
                 process = subprocess.Popen(["puppet"] + get_puppet_args() + [file],
                     stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
@@ -61,7 +61,19 @@ def check_puppet_syntax(local, master, old_revno, old_revid, future_revno,
                 if process.returncode != 0:
                     errors.append((file, ''.join(process.stdout.readlines())))
             except OSError, e:
-                print "\n\n Error: failed to execute 'puppet': %s" % (e)
+                print "\n\n Error: failed to check Puppet syntax: %s" % (e)
+                sys.exit(1)
+        if file.endswith(".erb"):
+            print "Checking ERB syntax in: %s" % (file)
+            try:
+                command = "erb -P -x -T '-' %s | ruby -c" % (file)
+                process = subprocess.Popen(command, shell=True,
+                    stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+                process.wait()
+                if process.returncode != 0:
+                    errors.append((file, ''.join(process.stdout.readlines())))
+            except OSError, e:
+                print "\n\n Error: failed to check ERB syntax: %s" % (e)
                 sys.exit(1)
     if errors:
         print "\nSyntax errors were found:\n"
